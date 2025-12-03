@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Stopwatch — Vivek</title>
+
+  <style>
+    :root{
+      --accent: #06b6d4;
+      --muted: #d4d4d4;
+      font-family: Inter, system-ui;
+    }
+
+    *{margin:0;padding:0;box-sizing:border-box;}
+
+    body{
+      height:100vh;
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+
+      /* 🔥 Background Photo Added */
+      background: url("https://imgs.search.brave.com/nkomHLuYQEVHJLOXP2i1eYoBtrsfDKIQL_mYPGzR3Rw/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9pbWFn/ZXMudW5zcGxhc2gu/Y29tL3Bob3RvLTE2/NjA2MDExNzQ3NTgt/MGQ3YjNhMThmYjg2/P2l4bGliPXJiLTQu/MS4wJml4aWQ9TTN3/eE1qQTNmREI4TUh4/elpXRnlZMmg4TVRo/OGZHMXZkVzUwZkdW/dWZEQjhmREI4Zkh3/dyZmbT1qcGcmcT02/MCZ3PTMwMDA") no-repeat center center/cover;
+      position: relative;
+    }
+
+    /* Dark overlay for readability */
+    body::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,0.6);
+      backdrop-filter: blur(3px);
+    }
+
+    .card{
+      position:relative;
+      width:420px;
+      background:rgba(255,255,255,0.1);
+      border-radius:14px;
+      padding:22px;
+      border:1px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(6px);
+      color:white;
+      z-index:5;
+    }
+
+    .display{
+      text-align:center;
+      font-size:40px;
+      font-weight:700;
+      padding:20px;
+      background:rgba(0,0,0,0.4);
+      border-radius:10px;
+      margin-bottom:16px;
+    }
+
+    .controls{
+      display:flex;
+      gap:10px;
+    }
+
+    .btn{
+      flex:1;
+      padding:10px;
+      border-radius:10px;
+      border:0;
+      cursor:pointer;
+      font-weight:600;
+      transition:0.2s;
+    }
+
+    .btn.primary{
+      background:var(--accent);
+      color:black;
+    }
+
+    .btn.ghost{
+      background:rgba(255,255,255,0.2);
+      color:white;
+      border:1px solid rgba(255,255,255,0.3);
+    }
+
+    .lap-area{
+      margin-top:12px;
+      max-height:180px;
+      overflow:auto;
+      background:rgba(0,0,0,0.3);
+      border-radius:10px;
+      padding:10px;
+    }
+    .lap{
+      display:flex;
+      justify-content:space-between;
+      padding:6px 0;
+      border-bottom:1px solid rgba(255,255,255,0.1);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2 style="text-align:center;margin-bottom:10px;">Stopwatch</h2>
+
+    <div id="display" class="display">00:00.00</div>
+
+    <div class="controls">
+      <button id="startPause" class="btn primary">Start</button>
+      <button id="lapBtn" class="btn ghost" disabled>Lap</button>
+      <button id="resetBtn" class="btn ghost">Reset</button>
+    </div>
+
+    <div class="lap-area" id="laps">
+      <div style="opacity:0.7">No laps yet</div>
+    </div>
+  </div>
+
+  <script>
+    const display = document.getElementById('display');
+    const startPauseBtn = document.getElementById('startPause');
+    const lapBtn = document.getElementById('lapBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const lapsEl = document.getElementById('laps');
+
+    let running = false;
+    let startTime = 0;
+    let elapsed = 0;
+    let rafId = null;
+    let laps = [];
+
+    function formatTime(ms){
+      const centi = Math.floor(ms / 10) % 100;
+      const sec = Math.floor(ms / 1000) % 60;
+      const min = Math.floor(ms / 60000);
+      return `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}.${String(centi).padStart(2,'0')}`;
+    }
+
+    function update(){
+      const now = performance.now();
+      const current = elapsed + (running ? now - startTime : 0);
+      display.textContent = formatTime(current);
+      rafId = requestAnimationFrame(update);
+    }
+
+    function start(){
+      running = true;
+      startTime = performance.now();
+      startPauseBtn.textContent = 'Pause';
+      lapBtn.disabled = false;
+      rafId = requestAnimationFrame(update);
+    }
+
+    function pause(){
+      running = false;
+      elapsed += performance.now() - startTime;
+      startPauseBtn.textContent = 'Start';
+      lapBtn.disabled = true;
+      cancelAnimationFrame(rafId);
+    }
+
+    function reset(){
+      running = false;
+      startTime = 0;
+      elapsed = 0;
+      display.textContent = "00:00.00";
+      lapBtn.disabled = true;
+      startPauseBtn.textContent = "Start";
+      laps = [];
+      lapsEl.innerHTML = '<div style="opacity:0.7">No laps yet</div>';
+      cancelAnimationFrame(rafId);
+    }
+
+    function lap(){
+      const now = performance.now();
+      const current = elapsed + (running ? now - startTime : 0);
+      laps.unshift(formatTime(current));
+      renderLaps();
+    }
+
+    function renderLaps(){
+      lapsEl.innerHTML = "";
+      laps.forEach((t,i)=>{
+        lapsEl.innerHTML += `<div class="lap"><span>#${i+1}</span><span>${t}</span></div>`;
+      });
+    }
+
+    startPauseBtn.onclick = ()=> running ? pause() : start();
+    lapBtn.onclick = lap;
+    resetBtn.onclick = reset;
+
+  </script>
+</body>
+</html>
